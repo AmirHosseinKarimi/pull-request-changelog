@@ -4,7 +4,7 @@ import * as github from '@actions/github';
 import * as core from '@actions/core';
 import makeTemplate from './template';
 import { gitNoTag, changeFiles, gitPrume } from './commands';
-import {bumpVersion} from "./version";
+import { bumpVersion } from './version';
 
 const pull_request = github.context.payload.pull_request;
 const repository = github.context.payload.repository;
@@ -43,7 +43,7 @@ const postToGit = async (url, key, body) => {
     }
     console.log('Generating changelog....');
     console.log(`Current version: ${currentVersion}`);
-    console.log(`Branch: ${branch}`)
+    console.log(`Branch: ${branch}`);
 
     await exec(gitPrume);
     await exec(gitNoTag);
@@ -52,11 +52,14 @@ const postToGit = async (url, key, body) => {
     let myError = '';
 
     const octokit = github.getOctokit(GITHUB_TOKEN);
-    let commitResponse = await octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/commits', {
-      owner: repository.owner.login,
-      repo: repository.name,
-      pull_number: PR_ID
-    });
+    let commitResponse = await octokit.request(
+      'GET /repos/{owner}/{repo}/pulls/{pull_number}/commits',
+      {
+        owner: repository.owner.login,
+        repo: repository.name,
+        pull_number: PR_ID,
+      },
+    );
 
     let commits = {};
     commitResponse.data.forEach((value) => {
@@ -66,21 +69,20 @@ const postToGit = async (url, key, body) => {
       commits[value.sha].message = value.commit.message;
     });
 
-    const shaKeys = Object.keys(commits).map(
-      (sha) =>
-          exec(changeFiles(sha), [], {
-            listeners: {
-              stdout: (data) => {
-                commits[sha].files = data
-                    .toString()
-                    .split('\n')
-                    .filter((i) => i);
-              },
-              stderr: (data) => {
-                console.log(`${myError}${data.toString()}`)
-              },
-            },
-          })
+    const shaKeys = Object.keys(commits).map((sha) =>
+      exec(changeFiles(sha), [], {
+        listeners: {
+          stdout: (data) => {
+            commits[sha].files = data
+              .toString()
+              .split('\n')
+              .filter((i) => i);
+          },
+          stderr: (data) => {
+            console.log(`${myError}${data.toString()}`);
+          },
+        },
+      }),
     );
 
     await Promise.all(shaKeys);
@@ -92,26 +94,24 @@ const postToGit = async (url, key, body) => {
     console.log('Posting change log to git comments');
     await postToGit(URL, GITHUB_TOKEN, changesTemplate);
     console.log('Setting change log as content output');
-    core.setOutput("content", changesTemplate);
+    core.setOutput('content', changesTemplate);
 
     console.log('Calculating next-version');
-    if(currentVersion) {
+    if (currentVersion) {
       const nextVersion = bumpVersion(versionMask, currentVersion);
-      core.setOutput("next-version", nextVersion);
-      console.log("New version: ", nextVersion);
+      core.setOutput('next-version', nextVersion);
+      console.log('New version: ', nextVersion);
     } else {
-      console.log("Ignored to bump new version due to invalid current version")
+      console.log('Ignored to bump new version due to invalid current version');
     }
 
-       // If there were errors, we throw it
+    // If there were errors, we throw it
     if (myError !== '') {
-        throw new Error(myError);
+      throw new Error(myError);
     }
-  
-    
   } catch (e) {
     console.log('Error found: ', e);
-    console.error('Failed due to : ',e);
+    console.error('Failed due to : ', e);
     process.exit(1);
   }
 })();
