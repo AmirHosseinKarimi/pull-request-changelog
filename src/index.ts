@@ -15,19 +15,59 @@ const branch = core.getInput('branch');
 const currentVersion = core.getInput('version');
 
 const postToGit = async (url, key, body) => {
-  const rawResponse = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `token ${key}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ body }),
-  });
-  if (!rawResponse.ok) {
-    throw new Error(rawResponse.statusText);
+  const lastComment = await getLastComment();
+
+  if (lastComment) {
+    console.log('Updating previous comment');
+    const octokit = github.getOctokit(GITHUB_TOKEN);
+    const response = await octokit.request(
+      'PATCH /repos/{owner}/{repo}/issues/comments/{comment_id}',
+      {
+        owner: repository.owner.login,
+        repo: repository.name,
+        comment_id: lastComment.id,
+        body,
+      },
+    );
+    return response.data;
   }
-  const content = await rawResponse.json();
-  return content;
+
+  console.log('Creating new comment');
+  const octokit = github.getOctokit(GITHUB_TOKEN);
+  const response = await octokit.request(
+    'POST /repos/{owner}/{repo}/issues/{issue_number}/comments',
+    {
+      owner: repository.owner.login,
+      repo: repository.name,
+      issue_number: PR_ID,
+      body,
+    },
+  );
+  return response.data;
+};
+
+/**
+ * Get last self comment in PR.
+ */
+const getLastComment = async () => {
+  const octokit = github.getOctokit(GITHUB_TOKEN);
+  const response = await octokit.request(
+    'GET /repos/{owner}/{repo}/issues/{issue_number}/comments',
+    {
+      owner: repository.owner.login,
+      repo: repository.name,
+      issue_number: PR_ID,
+      per_page: 100,
+    },
+  );
+  const comments = response.data;
+  const selfComments = comments.find(
+    (comment) =>
+      comment.user.login === 'github-actions[bot]' &&
+      comment.body.includes('📋 Changes'),
+  );
+
+  return selfComments;
 };
 
 /**
