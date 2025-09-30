@@ -60,12 +60,20 @@ const getLastComment = async () => {
       per_page: 100,
     },
   );
+
+  console.log(`Fetched ${response.data.length} comments in this PR`);
+
   const comments = response.data;
+
+  console.log('Comments: ', comments);
+
   const selfComments = comments.find(
     (comment) =>
       comment.user.login === 'github-actions[bot]' &&
       comment.body.includes('📋 Changes'),
   );
+
+  console.log('Last self comment: ', selfComments);
 
   return selfComments;
 };
