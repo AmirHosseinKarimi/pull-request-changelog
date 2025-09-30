@@ -59,6 +59,8 @@ export default function MakeTemplate(commits): MakeTemplate {
   let versionMask: number[] = [];
   let changesTemplate: string[] = [];
 
+  changesTemplate.push(getMarkdownOfHead('# ✨ Changelog', []));
+
   const majorLogs = changes['major'];
   if (majorLogs) {
     if(versionMask.length == 0) versionMask = [1,0,0];

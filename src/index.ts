@@ -64,7 +64,7 @@ const getLastComment = async () => {
   const selfComments = comments.find(
     (comment) =>
       comment.user.login === 'github-actions[bot]' &&
-      comment.body.includes('📋 Changes'),
+      comment.body.includes('# ✨ Changelog'),
   );
 
   return selfComments;
